@@ -1,0 +1,8 @@
+langgraph>=1.0,<2
+langgraph-checkpoint-sqlite>=2.0
+openai>=1.68
+pydantic>=2.7
+google-api-python-client>=2.130
+google-auth>=2.30
+google-auth-oauthlib>=1.2
+truststore>=0.10

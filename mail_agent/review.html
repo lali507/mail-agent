@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>אישור טיוטות</title>
+<style>
+  :root { --bg:#f6f7f9; --card:#fff; --ink:#1d2430; --muted:#667085; --line:#e4e7ec;
+          --ok:#12805c; --no:#b42318; --hold:#667085; --accent:#2f5bd3; }
+  * { box-sizing:border-box; }
+  body { margin:0; font:15px/1.5 "Segoe UI", Arial, sans-serif; background:var(--bg); color:var(--ink); }
+  header { position:sticky; top:0; z-index:2; background:var(--card); border-bottom:1px solid var(--line);
+           padding:14px 24px; display:flex; gap:16px; align-items:center; flex-wrap:wrap; }
+  header h1 { font-size:18px; margin:0; }
+  header .meta { color:var(--muted); }
+  header .spacer { flex:1; }
+  main { max-width:960px; margin:24px auto; padding:0 16px; display:grid; gap:16px; }
+  .card { background:var(--card); border:1px solid var(--line); border-radius:10px; padding:16px 18px; }
+  .card.approve { border-inline-start:4px solid var(--ok); }
+  .card.reject  { border-inline-start:4px solid var(--no); }
+  .head { display:flex; gap:10px; align-items:baseline; flex-wrap:wrap; }
+  .subject { font-weight:600; }
+  .from { color:var(--muted); font-size:13px; }
+  .badge { font-size:12px; padding:1px 8px; border-radius:999px; background:#eef2ff; color:var(--accent); }
+  .badge.high { background:#fef3f2; color:var(--no); }
+  .badge.err { background:#fffaeb; color:#b54708; }
+  details { margin:8px 0; color:var(--muted); font-size:13px; }
+  details pre { white-space:pre-wrap; font:inherit; margin:6px 0 0; background:var(--bg); padding:8px; border-radius:6px; }
+  textarea, input[type=text] { width:100%; font:inherit; border:1px solid var(--line); border-radius:8px; padding:10px; }
+  textarea { min-height:150px; resize:vertical; }
+  textarea.edited { border-color:var(--accent); }
+  .actions { display:flex; gap:8px; margin-top:10px; flex-wrap:wrap; align-items:center; }
+  .actions label { border:1px solid var(--line); border-radius:8px; padding:6px 12px; cursor:pointer; user-select:none; }
+  .actions input { display:none; }
+  .actions input:checked + span { font-weight:600; }
+  .actions label:has(input[value=approve]:checked) { border-color:var(--ok); color:var(--ok); }
+  .actions label:has(input[value=reject]:checked) { border-color:var(--no); color:var(--no); }
+  .hint { font-size:12px; color:var(--muted); }
+  .comment { margin-top:8px; display:none; }
+  .card.reject .comment { display:block; }
+  .fb { font-size:12px; color:var(--muted); margin-top:6px; }
+  button { font:inherit; border:0; border-radius:8px; padding:8px 16px; cursor:pointer; }
+  .primary { background:var(--accent); color:#fff; }
+  .ghost { background:transparent; border:1px solid var(--line); }
+  .error-msg { color:var(--no); font-size:13px; margin-top:6px; }
+  .done { text-align:center; padding:48px 16px; }
+  .done .nums { display:flex; gap:24px; justify-content:center; margin-top:16px; flex-wrap:wrap; }
+  .done .nums div { background:var(--card); border:1px solid var(--line); border-radius:10px; padding:12px 20px; }
+  .done b { display:block; font-size:24px; }
+  .busy { opacity:.5; pointer-events:none; }
+</style>
+</head>
+<body>
+<header>
+  <h1>טיוטות לאישור</h1>
+  <span class="meta" id="meta"></span>
+  <span class="spacer"></span>
+  <button class="ghost" id="allApprove">סמן הכל לאישור</button>
+  <button class="primary" id="submit">שלח החלטות</button>
+</header>
+<main id="main"><p>טוען…</p></main>
+
+<script>
+const T = new URLSearchParams(location.search).get("t");
+const api = (p) => `${p}?t=${encodeURIComponent(T)}`;
+const main = document.getElementById("main");
+let state = null;
+
+const esc = (s) => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+
+function render() {
+  const hdr = document.querySelector("header");
+  if (state.status === "done") {
+    hdr.querySelectorAll("button").forEach(b => b.hidden = true);
+    const s = state.stats || {};
+    document.getElementById("meta").textContent = "";
+    main.innerHTML = `<div class="done"><h2>סיימנו להיום</h2>
+      <div class="nums">
+        <div><b>${s.sent||0}</b>נשלחו</div>
+        <div><b>${s.manual||0}</b>לטיפול ידני</div>
+        <div><b>${s.deferred||0}</b>נדחו למחר</div>
+        ${s.send_failed ? `<div><b>${s.send_failed}</b>שליחה נכשלה</div>` : ""}
+      </div><p class="hint">אפשר לסגור את החלון.</p></div>`;
+    return;
+  }
+  document.getElementById("meta").textContent =
+    `סבב ${state.round} · ${state.drafts.length} טיוטות`;
+  main.innerHTML = state.drafts.map(d => `
+    <section class="card" data-id="${d.id}">
+      <div class="head">
+        <span class="subject" dir="auto">${esc(d.subject) || "(ללא נושא)"}</span>
+        ${d.priority === "high" ? '<span class="badge high">דחוף</span>' : ""}
+        <span class="badge">ניסיון ${d.attempt}/${state.max_attempts}</span>
+        ${d.error ? `<span class="badge err">${esc(d.error)}</span>` : ""}
+      </div>
+      <div class="from" dir="auto">${esc(d.from)}</div>
+      <details><summary>המייל המקורי</summary><pre dir="auto">${esc(d.excerpt)}</pre></details>
+      <textarea dir="auto" data-orig="${esc(d.body)}">${esc(d.body)}</textarea>
+      <div class="hint">אפשר לערוך את הטקסט ישירות. באישור, הטקסט הערוך נשלח כמו שהוא.</div>
+      ${d.feedback.length ? `<div class="fb">הערות קודמות: ${d.feedback.map(esc).join(" · ")}</div>` : ""}
+      <div class="actions">
+        <label><input type="radio" name="a${d.id}" value="approve"><span>✓ אשר ושלח</span></label>
+        <label><input type="radio" name="a${d.id}" value="reject"><span>✎ דחה עם הערה</span></label>
+        <label><input type="radio" name="a${d.id}" value="defer" checked><span>השאר למחר</span></label>
+      </div>
+      <div class="comment">
+        <input type="text" dir="auto" placeholder="מה לשנות? למשל: קצר יותר, להציע יום שלישי בבוקר">
+        <div class="hint">${d.attempt >= state.max_attempts
+          ? "זה הניסיון האחרון. דחייה תעביר את המייל לטיפול ידני."
+          : "הסוכן ישמור על העריכות שלך ויתקן לפי ההערה."}</div>
+      </div>
+      <div class="error-msg"></div>
+    </section>`).join("");
+
+  main.querySelectorAll(".card").forEach(card => {
+    const ta = card.querySelector("textarea");
+    ta.addEventListener("input", () => ta.classList.toggle("edited", ta.value !== ta.dataset.orig));
+    card.querySelectorAll("input[type=radio]").forEach(r => r.addEventListener("change", () => {
+      card.classList.remove("approve", "reject");
+      if (r.value !== "defer") card.classList.add(r.value);
+    }));
+  });
+}
+
+function collect() {
+  const decisions = {}; let ok = true;
+  main.querySelectorAll(".card").forEach(card => {
+    const action = card.querySelector("input[type=radio]:checked").value;
+    const ta = card.querySelector("textarea");
+    const comment = card.querySelector(".comment input").value.trim();
+    const err = card.querySelector(".error-msg"); err.textContent = "";
+    if (action === "defer") return;
+    const edited = ta.value !== ta.dataset.orig;
+    if (action === "approve" && !ta.value.trim()) { err.textContent = "אי אפשר לשלוח טיוטה ריקה."; ok = false; return; }
+    if (action === "reject" && !comment && !edited) {
+      err.textContent = "כדי לדחות, צריך לכתוב הערה או לערוך את הטקסט."; ok = false; return;
+    }
+    decisions[card.dataset.id] = { action, text: ta.value, comment };
+  });
+  return ok ? decisions : null;
+}
+
+async function load() {
+  state = await (await fetch(api("/api/state"))).json();
+  render();
+}
+
+document.getElementById("allApprove").onclick = () => {
+  main.querySelectorAll("input[value=approve]").forEach(r => { r.checked = true; r.dispatchEvent(new Event("change")); });
+};
+
+document.getElementById("submit").onclick = async () => {
+  const decisions = collect();
+  if (!decisions) return;
+  const n = Object.keys(decisions).length;
+  const deferred = state.drafts.length - n;
+  if (deferred && !confirm(`${deferred} טיוטות יישארו למחר. להמשיך?`)) return;
+  document.body.classList.add("busy");
+  main.insertAdjacentHTML("afterbegin", '<p class="hint">שולח ומנסח מחדש את מה שנדחה…</p>');
+  try {
+    const res = await fetch(api("/api/submit"), { method: "POST",
+      headers: {"Content-Type": "application/json"}, body: JSON.stringify({ decisions }) });
+    state = await res.json();
+    if (state.status === "error") { alert("שגיאה: " + state.message); await load(); }
+    else render();
+  } finally { document.body.classList.remove("busy"); window.scrollTo(0, 0); }
+};
+
+load();
+</script>
+</body>
+</html>

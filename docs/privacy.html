@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>mail-agent – Privacy Policy</title>
+<style>
+  :root { --bg:#fff; --fg:#1f2328; --muted:#59636e; --line:#d1d9e0; --accent:#0969da; --note:#f6f8fa; }
+  @media (prefers-color-scheme: dark) { :root { --bg:#0d1117; --fg:#e6edf3; --muted:#9198a1; --line:#3d444d; --accent:#4493f8; --note:#151b23; } }
+  body { background:var(--bg); color:var(--fg); font:16px/1.6 system-ui, -apple-system, "Segoe UI", Arial, sans-serif; margin:0; padding:0 16px; }
+  main { max-width:760px; margin:40px auto 64px; }
+  h1 { font-size:1.9rem; margin-bottom:4px; } h2 { font-size:1.25rem; margin-top:2rem; border-bottom:1px solid var(--line); padding-bottom:4px; }
+  .meta, footer { color:var(--muted); font-size:.9rem; }
+  .note { background:var(--note); border:1px solid var(--line); border-radius:8px; padding:12px 16px; }
+  .he { direction:rtl; text-align:right; }
+  a { color:var(--accent); } code { font-size:.9em; }
+</style>
+</head>
+<body>
+<main>
+<h1>mail-agent – Privacy Policy</h1>
+<p class="meta">Last updated: November 24, 2026</p>
+
+<div class="note he">
+  <strong>בקצרה:</strong> mail-agent רץ על המחשב שלך בלבד. הוא קורא מיילים חדשים מתיבת ה־Gmail שלך, שולח את תוכנם ל־Google Gemini כדי לנסח טיוטות תשובה, ושולח תשובה רק אחרי שאישרת אותה. אין שרת של המפתחת, והמידע לא נמכר ולא מועבר לאף אחד אחר.
+</div>
+
+<h2>1. Who we are</h2>
+<p>mail-agent is a personal email-reply assistant developed by Lea Fruchter. It runs entirely on the user's own computer. There is no mail-agent server: the developer does not receive, see or store any of your data.</p>
+
+<h2>2. What data the app accesses</h2>
+<p>With your permission (Google OAuth scope <code>https://www.googleapis.com/auth/gmail.modify</code>), the app:</p>
+<ul>
+  <li><strong>Reads</strong> recent messages in your inbox: sender, subject, date, message and thread identifiers, and message body.</li>
+  <li><strong>Sends</strong> replies from your account, only after you approve each draft on the local review page.</li>
+</ul>
+<p>The app does not delete messages, change labels, read your contacts or access any other Google service.</p>
+
+<h2>3. How the data is used</h2>
+<ul>
+  <li><strong>Filtering:</strong> newsletters, automated messages and your own messages are skipped locally, without being sent anywhere.</li>
+  <li><strong>Drafting:</strong> for the remaining messages, a shortened excerpt (sender, subject and up to about 2,500 characters of text) is sent to the <strong>Google Gemini API</strong> to decide whether a reply is needed and to write a draft.</li>
+  <li><strong>Sending:</strong> a reply is sent through the Gmail API only after you approve it.</li>
+</ul>
+<p>Data is used only to provide these features to you. It is not used for advertising, is not sold, and is not used by the developer to train AI models.</p>
+
+<h2>4. Third parties</h2>
+<p>Email excerpts are processed by <strong>Google Gemini API</strong> (Google LLC) under <a href="https://ai.google.dev/gemini-api/terms">Google's Gemini API terms</a>. On Google's unpaid (free) tier, Google states that submitted content may be used to improve its products and may be reviewed by humans. Users who do not want this should use a paid Gemini API tier. No other third party receives your data.</p>
+
+<h2>5. Storage and retention</h2>
+<ul>
+  <li>All app data is stored only on your computer, in the app's <code>data</code> folder: drafts and short excerpts of the original messages (SQLite database), your Google sign-in token (<code>token.json</code>), and logs.</li>
+  <li>The data stays there until you delete it. Deleting the <code>data</code> folder removes everything the app stored.</li>
+</ul>
+
+<h2>6. Your choices</h2>
+<ul>
+  <li>You can revoke the app's access to Gmail at any time at <a href="https://myaccount.google.com/permissions">myaccount.google.com/permissions</a>.</li>
+  <li>You decide on every draft: approve, reject with a comment, or leave it for the next day. Nothing is sent without your approval.</li>
+</ul>
+
+<h2>7. Google API Services User Data Policy</h2>
+<p>mail-agent's use and transfer of information received from Google APIs to any other app will adhere to the <a href="https://developers.google.com/terms/api-services-user-data-policy">Google API Services User Data Policy</a>, including the Limited Use requirements.</p>
+
+<h2>8. Children</h2>
+<p>The app is not directed at children under 13.</p>
+
+<h2>9. Changes</h2>
+<p>If this policy changes, the updated version will be published on this page with a new "Last updated" date.</p>
+
+<h2>10. Contact</h2>
+<p>Questions about this policy: <a href="mailto:l0556739396@gmail.com">l0556739396@gmail.com</a>.</p>
+
+<footer>
+  <hr>
+  <p>mail-agent was built with the help of Claude, an AI model by Anthropic. Anthropic is not the operator of this app and does not receive its data.</p>
+  <p><a href="terms.html">Terms of Service</a></p>
+</footer>
+</main>
+</body>
+</html>
