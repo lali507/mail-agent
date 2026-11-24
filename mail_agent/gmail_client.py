@@ -72,8 +72,15 @@ def parse_message(m: dict, body_chars: int) -> dict:
     }
 
 
+class GmailAuthExpired(RuntimeError):
+    """The saved Gmail sign-in is missing, expired or revoked and we may not open a browser."""
+
+
 class GmailClient:
-    def __init__(self, settings):
+    def __init__(self, settings, interactive: bool = True, on_reauth=None):
+        """interactive=False (hourly runs): never open a browser, raise GmailAuthExpired instead.
+        on_reauth: called just before the browser sign-in opens (e.g. to show a notification)."""
+        from google.auth.exceptions import RefreshError
         from google.auth.transport.requests import Request
         from google.oauth2.credentials import Credentials
         from google_auth_oauthlib.flow import InstalledAppFlow
@@ -84,13 +91,23 @@ class GmailClient:
         if settings.token_path.exists():
             creds = Credentials.from_authorized_user_file(str(settings.token_path), SCOPES)
         if not creds or not creds.valid:
+            refreshed = False
             if creds and creds.expired and creds.refresh_token:
-                creds.refresh(Request())
-            else:
+                try:
+                    creds.refresh(Request())
+                    refreshed = True
+                except RefreshError:
+                    # Typical in Google "Testing" mode: the sign-in expires after 7 days.
+                    log.warning("Gmail sign-in expired or was revoked")
+            if not refreshed:
+                if not interactive:
+                    raise GmailAuthExpired("Gmail sign-in expired. Run: python -m mail_agent auth")
                 if not settings.credentials_path.exists():
                     raise FileNotFoundError(
                         f"Missing {settings.credentials_path}. Download an OAuth 'Desktop app' client JSON "
                         "from Google Cloud Console and save it there.")
+                if on_reauth:
+                    on_reauth()
                 flow = InstalledAppFlow.from_client_secrets_file(str(settings.credentials_path), SCOPES)
                 creds = flow.run_local_server(port=0)
             settings.token_path.write_text(creds.to_json(), encoding="utf-8")

@@ -41,14 +41,20 @@ def setup_logging(settings: Settings) -> None:
         logging.getLogger(noisy).setLevel(logging.WARNING)
 
 
-def build_deps(settings: Settings, demo: bool) -> Deps:
+def build_deps(settings: Settings, demo: bool, interactive: bool = True) -> Deps:
     db = DB(settings.db_path)
     if demo:
         from .fakes import FakeGmail, FakeLLM
         return Deps(settings, db, FakeGmail(), FakeLLM())
     from .gmail_client import GmailClient
     from .llm import LLM
-    return Deps(settings, db, GmailClient(settings), LLM(settings, db))
+    from .notify import notify
+
+    def on_reauth():
+        notify("ההתחברות ל־Gmail פגה", "נפתח עכשיו דף התחברות של Google. התחברי כדי שהסוכן ימשיך לעבוד.")
+
+    gmail = GmailClient(settings, interactive=interactive, on_reauth=on_reauth)
+    return Deps(settings, db, gmail, LLM(settings, db))
 
 
 def run_ingest(deps: Deps) -> list[int]:
@@ -113,7 +119,14 @@ def main(argv: list[str] | None = None) -> None:
             print(row)
         return
 
-    deps = build_deps(settings, demo=args.cmd == "demo")
+    # Only the hourly ingest must never open a browser; auth and the 18:00 review may.
+    from .gmail_client import GmailAuthExpired
+    try:
+        deps = build_deps(settings, demo=args.cmd == "demo", interactive=args.cmd != "ingest")
+    except GmailAuthExpired:
+        log.warning("Gmail sign-in expired; skipping this run. It will be renewed at the 18:00 review, "
+                    "or run: python -m mail_agent auth")
+        return
     if args.cmd == "auth":
         print("Signed in as", deps.gmail.my_address())
     elif args.cmd == "ingest":
