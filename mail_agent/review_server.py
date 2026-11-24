@@ -5,6 +5,8 @@ from __future__ import annotations
 import json
 import logging
 import secrets
+import socket
+import sys
 import threading
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from importlib import resources
@@ -59,6 +61,17 @@ def _page() -> bytes:
     return resources.files("mail_agent").joinpath("review.html").read_bytes()
 
 
+class _ExclusiveServer(ThreadingHTTPServer):
+    """Never share the port. On Windows, SO_REUSEADDR (the http.server default) lets a second
+    server bind the same port, so the browser may reach a stale one and get 403."""
+    allow_reuse_address = sys.platform != "win32"
+
+    def server_bind(self):
+        if sys.platform == "win32":
+            self.socket.setsockopt(socket.SOL_SOCKET, socket.SO_EXCLUSIVEADDRUSE, 1)
+        super().server_bind()
+
+
 def make_server(session: ReviewSession, port: int) -> tuple[ThreadingHTTPServer, str]:
     token = secrets.token_urlsafe(16)
 
@@ -104,7 +117,11 @@ def make_server(session: ReviewSession, port: int) -> tuple[ThreadingHTTPServer,
                 log.exception("submit failed")
                 self._json({"status": "error", "message": str(ex)}, 500)
 
-    server = ThreadingHTTPServer(("127.0.0.1", port), Handler)
+    try:
+        server = _ExclusiveServer(("127.0.0.1", port), Handler)
+    except OSError:  # port busy (e.g. a review page left open): use any free port instead
+        log.warning("port %s is busy; using a free port", port)
+        server = _ExclusiveServer(("127.0.0.1", 0), Handler)
     url = f"http://127.0.0.1:{server.server_address[1]}/?t={token}"
     return server, url
 

@@ -37,7 +37,7 @@ def setup_logging(settings: Settings) -> None:
         handlers.append(logging.StreamHandler())
     logging.basicConfig(level=logging.INFO, handlers=handlers,
                         format="%(asctime)s %(levelname)s %(name)s: %(message)s")
-    for noisy in ("httpx", "googleapiclient", "openai"):
+    for noisy in ("httpx", "httpx2", "googleapiclient", "openai"):
         logging.getLogger(noisy).setLevel(logging.WARNING)
 
 
